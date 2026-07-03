@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Performance_Rating__c</fullName>
+    <externalId>false</externalId>
+    <formula>IF(
+    ISBLANK(Performance_Score__c),
+    &quot;&quot;,
+    IF(
+        Performance_Score__c &gt;= 90,
+        &quot;Excellent&quot;,
+        IF(
+            Performance_Score__c &gt;= 75,
+            &quot;Good&quot;,
+            IF(
+                Performance_Score__c &gt;= 60,
+                &quot;Average&quot;,
+                IF(
+                    Performance_Score__c &gt;= 40,
+                    &quot;Poor&quot;,
+                    &quot;Blocked&quot;
+                )
+            )
+        )
+    )
+)</formula>
+    <label>Performance Rating</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

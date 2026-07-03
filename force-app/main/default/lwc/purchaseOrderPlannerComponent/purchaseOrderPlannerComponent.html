@@ -1,0 +1,1332 @@
+<template>
+    <!-- ===== MAIN WRAPPER ===== -->
+    <div class={mainContainerClass}>
+        <!-- ===== DYNAMIC GENERATION SPINNER ===== -->
+        <template if:true={isWorking}>
+            <lightning-spinner alternative-text="Generating Purchase Orders..." size="medium" variant="brand"></lightning-spinner>
+        </template>
+
+        <!-- ===== LEFT SECTION: Main Content ===== -->
+        <div class={leftSectionClass}>
+
+            <!-- BLUE GRADIENT HEADER -->
+            <div class="header-bar-blue">
+                <div class="header-left">
+                    <div class="header-icon-circle">
+                        <lightning-icon icon-name="standard:orders" size="medium"></lightning-icon>
+                    </div>
+                    <div class="header-text">
+                        <h1 class="header-title-white">Create Purchase Orders</h1>
+                        <span class="header-subtitle">Review and consolidate Purchase Requisition Lines by Vendor and
+                            Location to create Purchase Orders, Purchase Order Line Items, and Purchase Order Allocation
+                            Records.</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <lightning-button label="Refresh" icon-name="utility:refresh" variant="neutral"
+                        onclick={handleRefresh} class="refresh-btn-white" disabled={isWorking}>
+                    </lightning-button>
+                </div>
+            </div>
+
+            <!-- COLLAPSIBLE FILTER SECTION -->
+            <div class="filter-section">
+                <div class="filter-toggle-bar">
+                    <button class="filter-toggle-left" onclick={handleToggleFilters}>
+                        <lightning-icon icon-name={filterChevronIcon} size="xx-small"
+                            class="filter-toggle-icon"></lightning-icon>
+                        <span class="filter-toggle-label">Filters</span>
+                    </button>
+                    <button class="filter-collapse-btn" onclick={handleToggleFilters}>
+                        <span>{filterToggleLabel}</span>
+                        <lightning-icon icon-name={filterToggleIcon} size="xx-small"></lightning-icon>
+                    </button>
+                </div>
+
+                <template if:true={isFiltersOpen}>
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <div class="filter-item">
+                                <label class="filter-label">Warehouse</label>
+                                <lightning-combobox value={filterWarehouse} options={warehouseOptions} placeholder="All"
+                                    variant="label-hidden" onchange={handleWarehouseFilter}>
+                                </lightning-combobox>
+                            </div>
+                            <div class="filter-item filter-item-search">
+                                <label class="filter-label">Item</label>
+                                <lightning-input type="search" placeholder="Search Items..." value={filterItem}
+                                    variant="label-hidden" onchange={handleItemFilter}>
+                                </lightning-input>
+                            </div>
+                            <div class="filter-item">
+                                <label class="filter-label">Vendor</label>
+                                <lightning-combobox value={filterVendor} options={vendorOptions} placeholder="All"
+                                    variant="label-hidden" onchange={handleVendorFilter}>
+                                </lightning-combobox>
+                            </div>
+                            <div class="filter-item filter-item-date">
+                                <label class="filter-label">Required Date</label>
+                                <div class="date-range">
+                                    <lightning-input type="date" value={filterDateFrom} variant="label-hidden"
+                                        onchange={handleDateFromFilter}>
+                                    </lightning-input>
+                                    <span class="date-separator">–</span>
+                                    <lightning-input type="date" value={filterDateTo} variant="label-hidden"
+                                        onchange={handleDateToFilter}>
+                                    </lightning-input>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label class="filter-label">Status</label>
+                                <lightning-combobox value={filterStatus} options={statusOptions} placeholder="Open"
+                                    variant="label-hidden" onchange={handleStatusFilter}>
+                                </lightning-combobox>
+                            </div>
+                        </div>
+                        <div class="filter-actions">
+                            <lightning-button label="Reset" variant="neutral"
+                                onclick={handleClearFilters}></lightning-button>
+                            <lightning-button label="Search" variant="brand"
+                                onclick={handleApplyFilters}></lightning-button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- TABLE SECTION -->
+            <div class="table-section">
+                <!-- Table Header Actions -->
+                <div class="table-header-bar">
+                    <div class="table-header-left">
+                        <h2 class="section-title">
+                            Purchase Requisition Summary
+                            <lightning-icon icon-name="utility:info" size="xx-small" class="info-icon"></lightning-icon>
+                        </h2>
+                        <span class="record-count">{totalRecords} Records • {selectedCount} Selected</span>
+                    </div>
+                    <div class="table-header-right">
+                        <!-- <lightning-button label="View Details" icon-name="utility:preview" variant="neutral"
+                            disabled={isViewDetailsDisabled} onclick={handleViewDetails}>
+                        </lightning-button> -->
+                        <lightning-button label="Clear Selection" icon-name="utility:close" variant="neutral"
+                            onclick={handleClearSelection} class="clear-selection-btn" disabled={isClearSelectionDisabled}>
+                        </lightning-button>
+                        <lightning-button label="Generate Purchase Orders" variant="brand" icon-name="utility:cart"
+                            onclick={handleGeneratePO} class="generate-po-btn" disabled={isGenerateDisabled}
+                            title={generateButtonTitle}>
+                        </lightning-button>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="data-table-container">
+                    <!-- Loading Skeleton State -->
+                    <template if:true={isLoading}>
+                        <div class="skeleton-container">
+                            <div class="skeleton-header-row">
+                                <div class="skeleton-cell skeleton-sm"></div>
+                                <div class="skeleton-cell skeleton-lg"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-sm"></div>
+                            </div>
+                            <div class="skeleton-row">
+                                <div class="skeleton-cell skeleton-sm"></div>
+                                <div class="skeleton-cell skeleton-lg"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-sm"></div>
+                            </div>
+                            <div class="skeleton-row">
+                                <div class="skeleton-cell skeleton-sm"></div>
+                                <div class="skeleton-cell skeleton-lg"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-sm"></div>
+                            </div>
+                            <div class="skeleton-row">
+                                <div class="skeleton-cell skeleton-sm"></div>
+                                <div class="skeleton-cell skeleton-lg"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-sm"></div>
+                            </div>
+                            <div class="skeleton-row">
+                                <div class="skeleton-cell skeleton-sm"></div>
+                                <div class="skeleton-cell skeleton-lg"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-md"></div>
+                                <div class="skeleton-cell skeleton-sm"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Empty State -->
+                    <template if:true={hasNoFilteredLines}>
+                        <div class="table-empty-state">
+                            <lightning-icon icon-name="utility:search" size="large"
+                                class="empty-state-icon"></lightning-icon>
+                            <h3 class="empty-state-title">No Records Found</h3>
+                            <p class="empty-state-text">No purchase requisition lines match your current filters. Try
+                                adjusting your search criteria or reset filters.</p>
+                            <lightning-button label="Reset Filters" variant="neutral" onclick={handleClearFilters}
+                                class="slds-m-top_small"></lightning-button>
+                        </div>
+                    </template>
+
+                    <!-- Data Table -->
+                    <template if:true={hasFilteredLines}>
+                        <table class="slds-table slds-table_bordered slds-table_cell-buffer custom-table">
+                            <thead>
+                                <tr>
+                                    <th class="checkbox-col">
+                                        <lightning-input type="checkbox" checked={isAllSelected}
+                                            onchange={handleSelectAll} variant="label-hidden" label="Select All">
+                                        </lightning-input>
+                                    </th>
+                                    <th class="sortable-col" onclick={handleSort} data-name="itemName">
+                                        <span>Item</span>
+                                        <lightning-icon icon-name={itemSortIcon} size="xx-small"
+                                            class={itemSortClass}></lightning-icon>
+                                    </th>
+                                    <th class="sortable-col" onclick={handleSort} data-name="warehouseName">
+                                        <span>Warehouse</span>
+                                        <lightning-icon icon-name={warehouseSortIcon} size="xx-small"
+                                            class={warehouseSortClass}></lightning-icon>
+                                    </th>
+                                    <th class="sortable-col" onclick={handleSort} data-name="Requested_Qty__c">
+                                        <span>Requested Qty</span>
+                                        <lightning-icon icon-name={qtySortIcon} size="xx-small"
+                                            class={qtySortClass}></lightning-icon>
+                                    </th>
+                                    <th class="sortable-col" onclick={handleSort} data-name="vendorName">
+                                        <span>Vendor</span>
+                                        <lightning-icon icon-name={vendorSortIcon} size="xx-small"
+                                            class={vendorSortClass}></lightning-icon>
+                                    </th>
+                                    <th class="sortable-col" onclick={handleSort} data-name="hasPreferredVendor">
+                                        <span>Preferred Vendor</span>
+                                        <lightning-icon icon-name={preferredSortIcon} size="xx-small"
+                                            class={preferredSortClass}></lightning-icon>
+                                    </th>
+                                    <th class="sortable-col" onclick={handleSort} data-name="requiredDate">
+                                        <span>Required Date</span>
+                                        <lightning-icon icon-name={dateSortIcon} size="xx-small"
+                                            class={dateSortClass}></lightning-icon>
+                                    </th>
+                                    <th>
+                                        <span>More Actions</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={paginatedLines} for:item="line">
+                                    <tr key={line.Id} class={line.rowClass} data-id={line.Id}>
+                                        <td class="checkbox-col">
+                                            <lightning-input type="checkbox" checked={line.isSelected} data-id={line.Id}
+                                                onchange={handleRowSelect} variant="label-hidden" label="Select">
+                                            </lightning-input>
+                                        </td>
+                                        <td>
+                                            <a href="#" class="item-link" data-id={line.Id}
+                                                onclick={handleItemClick}>
+                                                {line.itemName}
+                                            </a>
+                                        </td>
+                                        <td>{line.warehouseName}</td>
+                                        <td>{line.Requested_Qty__c}</td>
+                                        <td>{line.vendorName}</td>
+                                        <td>
+                                            <template if:true={line.hasPreferredVendor}>
+                                                <lightning-icon icon-name="utility:check" size="xx-small"
+                                                    variant="success"></lightning-icon>
+                                            </template>
+                                        </td>
+                                        <td>{line.requiredDate}</td>
+                                        <td>
+                                            <a href="#" class="more-actions-link" data-id={line.Id}
+                                                onclick={handleMoreActions}>
+                                                More Actions
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </template>
+                </div>
+
+                <!-- Pagination -->
+                <template if:true={hasFilteredLines}>
+                    <c-generic-pagination
+                        current-page={currentPage}
+                        page-size={pageSize}
+                        total-records={totalRecords}
+                        show-page-size-selector
+                        onpagechange={handlePageChange}>
+                    </c-generic-pagination>
+                </template>
+
+                <!-- Progress Bar -->
+                <div class="progress-bar-container">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" style={progressBarStyle}></div>
+                    </div>
+                </div>
+
+                <!-- Summary Section -->
+                <div class="summary-section">
+                    <h3 class="summary-title">Summary</h3>
+                    <div class="summary-cards">
+                        <div class="summary-card">
+                            <span class="summary-label">Selected Lines</span>
+                            <span class="summary-value">{selectedCount}</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">Total Requested Qty</span>
+                            <span class="summary-value">{totalRequestedQty}</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">No. of Vendors</span>
+                            <span class="summary-value">{uniqueVendorCount}</span>
+                        </div>
+                        <div class="summary-card">
+                            <span class="summary-label">No. of Warehouses</span>
+                            <span class="summary-value">{uniqueWarehouseCount}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Info -->
+                <!-- <div class="footer-info">
+                    <lightning-icon icon-name="utility:info" size="xx-small" class="footer-info-icon"></lightning-icon>
+                    <span>System will create Purchase Orders grouped by Vendor and Warehouse. Each selected line will be
+                        converted to one or more Purchase Order Lines.</span>
+                </div> -->
+            </div>
+        </div>
+
+        <!-- ===== RIGHT PANEL: Selected Line Details ===== -->
+        <template if:true={isPanelOpen}>
+            <div class="right-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Selected Line Details</h2>
+                    <button class="panel-close-btn" onclick={handleClosePanel}>
+                        <lightning-icon icon-name="utility:close" size="small"
+                            alternative-text="Close"></lightning-icon>
+                    </button>
+                </div>
+
+                <!-- Panel Sub-Header -->
+                <template if:true={selectedLineDetail}>
+                    <div class="panel-subheader">
+                        <h3 class="panel-item-title">{panelTitle}</h3>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div class="panel-tabs" role="tablist">
+                        <button class={overviewTabClass} data-tab="overview" onclick={handleTabClick}
+                            onkeydown={handleTabKeyDown} role="tab" tabindex="0">Overview</button>
+                        <button class={contributingSRsTabClass} data-tab="contributingSRs" onclick={handleTabClick}
+                            onkeydown={handleTabKeyDown} role="tab" tabindex="-1">Contributing SRs</button>
+                        <button class={inventoryTabClass} data-tab="inventory" onclick={handleTabClick}
+                            onkeydown={handleTabKeyDown} role="tab" tabindex="-1">Inventory</button>
+                        <button class={demandBreakdownTabClass} data-tab="demandBreakdown" onclick={handleTabClick}
+                            onkeydown={handleTabKeyDown} role="tab" tabindex="-1">Demand Breakdown</button>
+                        <button class={approvedVendorsTabClass} data-tab="approvedVendors" onclick={handleTabClick}
+                            onkeydown={handleTabKeyDown} role="tab" tabindex="-1">Approved Vendors</button>
+                        <template if:true={hasApprovedVendors}>
+                            <button class={vendorComparisonTabClass} data-tab="vendorComparison" onclick={handleTabClick}
+                                onkeydown={handleTabKeyDown} role="tab" tabindex="-1">Vendor Comparison</button>
+                        </template>
+
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="panel-tab-content">
+
+                        <!-- ====== TAB 1: OVERVIEW ====== -->
+                        <template if:true={isOverviewTab}>
+                            <div class="tab-overview">
+
+                                <!-- Line Item Details Card -->
+                                <div class="overview-detail-card">
+                                    <div class="overview-detail-card-header">
+                                        <lightning-icon icon-name="utility:assignment" size="xx-small" class="odc-icon"></lightning-icon>
+                                        <h4 class="odc-title">Line Item Details</h4>
+                                    </div>
+                                    <div class="odc-divider"></div>
+                                    <div class="odc-grid">
+                                        <div class="odc-item">
+                                            <span class="odc-label">PR LINE</span>
+                                            <span class="odc-value">
+                                                <a href="#" class="odc-link-blue"
+                                                    data-id={selectedLineDetail.Id}
+                                                    data-object="Purchase_Requisition_Line__c"
+                                                    onclick={handleRecordNavigate}>{selectedLineDetail.Name}</a>
+                                            </span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">STATUS</span>
+                                            <span class="odc-value">
+                                                <span class={selectedLineStatusClass}>
+                                                    <template if:true={selectedLineIsOpen}>
+                                                        <lightning-icon icon-name="utility:clock" size="xx-small" class="status-pill-icon"></lightning-icon>
+                                                    </template>
+                                                    {selectedLineDetail.Status__c}
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">REQUESTED QTY</span>
+                                            <span class="odc-value odc-value-large">{selectedLineDetail.Requested_Qty__c}</span>
+                                            <span class="odc-sub">units</span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">PURCHASE REQUISITION</span>
+                                            <span class="odc-value">
+                                                <a href="#" class="odc-link-blue odc-link-bold"
+                                                    data-id={selectedLineDetail.Purchase_Requisition__c}
+                                                    data-object="Purchase_Requisition__c"
+                                                    onclick={handleRecordNavigate}>{prName}</a>
+                                            </span>
+                                            <span class="odc-sub">Parent document</span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">REQUESTED DATE</span>
+                                            <div class="odc-date-row">
+                                                <lightning-icon icon-name="utility:event" size="xx-small" class="odc-cal-icon"></lightning-icon>
+                                                <span class="odc-value">{prRequestedDate}</span>
+                                            </div>
+                                            <template if:true={relativeRequiredDateForLine}>
+                                                <span class="odc-sub">{relativeRequiredDateForLine}</span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Item Details Card -->
+                                <div class="overview-detail-card">
+                                    <div class="overview-detail-card-header">
+                                        <lightning-icon icon-name="utility:product" size="xx-small" class="odc-icon"></lightning-icon>
+                                        <h4 class="odc-title">Item Details</h4>
+                                    </div>
+                                    <div class="odc-divider"></div>
+                                    <div class="odc-grid">
+                                        <div class="odc-item">
+                                            <span class="odc-label">ITEM NAME</span>
+                                            <span class="odc-value odc-value-bold">{itemName}</span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">ITEM CODE</span>
+                                            <span class="item-code-badge">{itemCode}</span>
+                                        </div>
+                                        <div class="odc-item odc-span-2">
+                                            <span class="odc-label">ITEM DESCRIPTION</span>
+                                            <span class="odc-value odc-italic">{itemDescription}</span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">ITEM FAMILY</span>
+                                            <span class={itemFamilyBadgeClass}>{itemFamily}</span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">UNIT OF MEASURE</span>
+                                            <span class="odc-value">{itemUOM}</span>
+                                        </div>
+                                        <div class="odc-item">
+                                            <span class="odc-label">DEFAULT SUPPLY METHOD</span>
+                                            <span class="odc-value">{itemSupplyMethod}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Inventory at Location Card -->
+                                <div class="overview-detail-card">
+                                    <div class="overview-detail-card-header">
+                                        <lightning-icon icon-name="utility:location" size="xx-small" class="odc-icon"></lightning-icon>
+                                        <h4 class="odc-title">Inventory at Location</h4>
+                                    </div>
+                                    <div class="odc-divider"></div>
+                                    <!-- Top row: Location / On Hand / Requested -->
+                                    <div class="inv-overview-row">
+                                        <div class="inv-overview-col">
+                                            <span class="odc-label">LOCATION</span>
+                                            <span class="odc-value odc-value-bold">{inventoryLocation}</span>
+                                        </div>
+                                        <div class="inv-overview-col">
+                                            <span class="odc-label">ON HAND QTY</span>
+                                            <span class="odc-value odc-value-large">{onHandQty}</span>
+                                        </div>
+                                        <div class="inv-overview-col">
+                                            <span class="odc-label">REQUESTED QTY</span>
+                                            <span class="odc-value odc-value-large">{selectedLineDetail.Requested_Qty__c}</span>
+                                        </div>
+                                    </div>
+                                    <div class="odc-divider-light"></div>
+                                    <!-- Bottom row: Available / Reserved / Stock Health -->
+                                    <div class="inv-badge-row">
+                                        <div class="inv-badge-col">
+                                            <span class="odc-label">Available</span>
+                                            <span class="inv-avail-badge inv-avail-zero">{availableQtyDisplay}</span>
+                                        </div>
+                                        <div class="inv-badge-col">
+                                            <span class="odc-label">Reserved</span>
+                                            <span class="inv-reserved-badge">{reservedQty}</span>
+                                        </div>
+                                        <div class="inv-badge-col">
+                                            <span class="odc-label">Stock Health</span>
+                                            <span class={stockHealthClass}>
+                                                <lightning-icon icon-name="utility:warning" size="xx-small" class="health-icon"></lightning-icon>
+                                                {stockHealthLabel}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <!-- View All Footer -->
+                                    <template if:true={hasOtherLocations}>
+                                        <div class="inv-viewall-footer">
+                                            <lightning-icon icon-name="utility:info" size="xx-small" class="info-icon-gray"></lightning-icon>
+                                            <span class="inv-viewall-text">{otherLocationsText}</span>
+                                            <a href="#" class="inv-viewall-link" onclick={handleViewAllInventory}>View all</a>
+                                        </div>
+                                    </template>
+                                </div>
+
+                            </div>
+                        </template>
+
+
+                        <!-- ====== TAB 2: CONTRIBUTING SRs ====== -->
+                        <template if:true={isContributingSRsTab}>
+                            <div class="tab-contributing-srs">
+                                <!-- Three Highlight Cards -->
+                                <div class="overview-highlight-panel">
+                                    <div class="overview-card">
+                                        <span class="overview-card-label">REQUESTED QTY</span>
+                                        <span class="overview-card-value">{selectedLineDetail.Requested_Qty__c}</span>
+                                        <span class="overview-card-subtitle">units</span>
+                                    </div>
+                                    <div class="overview-card">
+                                        <span class="overview-card-label">PREFERRED VENDOR</span>
+                                        <span class="overview-card-value">{preferredVendorName}</span>
+                                        <template if:true={hasPreferredVendorDetail}>
+                                            <span class="overview-card-status status-active">● Active</span>
+                                        </template>
+                                    </div>
+                                    <div class="overview-card">
+                                        <span class="overview-card-label">REQUIRED DATE</span>
+                                        <span class="overview-card-value">{prRequestedDate}</span>
+                                        <span class="overview-card-subtitle-icon">
+                                            <lightning-icon icon-name="utility:event" size="xx-small" class="calendar-icon-gray"></lightning-icon>
+                                            {relativeRequiredDate}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Contributing Supply Requests - Collapsible -->
+                                <div class="collapsible-section-v2">
+                                    <button class="collapsible-header-v2" onclick={toggleContributingSRsSection}>
+                                        <div class="section-header-left">
+                                            <lightning-icon icon-name="utility:list" size="small" class="section-icon-blue"></lightning-icon>
+                                            <span class="section-title">Contributing Supply Requests</span>
+                                        </div>
+                                        <lightning-icon icon-name={contributingSRsChevron} size="xx-small" class="chevron-icon-v2"></lightning-icon>
+                                    </button>
+                                    <div class="section-subtitle">{contributingSRsCountText}</div>
+                                    <template if:true={isContributingSRsExpanded}>
+                                        <div class="collapsible-content-v2">
+                                            <template if:true={hasContributingSRs}>
+                                                <div class="collapsible-table-card">
+                                                    <table class="slds-table slds-table_bordered inner-table-v2">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>SUPPLY REQUEST</th>
+                                                                <th>REQUEST TYPE</th>
+                                                                <th>QUANTITY</th>
+                                                                <th>STATUS</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <template for:each={contributingSRs} for:item="sr">
+                                                                <tr key={sr.Id}>
+                                                                    <td>
+                                                                        <a href="#" class="sr-link-bold"
+                                                                            data-id={sr.Id} data-object="Supply_Request__c"
+                                                                            onclick={handleRecordNavigate}>{sr.Name}</a>
+                                                                    </td>
+                                                                    <td>{sr.Request_Type__c}</td>
+                                                                    <td class="text-bold">{sr.Requested_Qty__c}</td>
+                                                                    <td>
+                                                                        <span class={sr.statusClass}>
+                                                                            <template if:true={sr.isOpen}>
+                                                                                <lightning-icon icon-name="utility:clock" size="xx-small" class="status-pill-icon"></lightning-icon>
+                                                                            </template>
+                                                                            {sr.Status__c}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            </template>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </template>
+                                            <template if:false={hasContributingSRs}>
+                                                <div class="empty-state">No Contributing Supply Requests found.</div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- Contributing PR Lines - Collapsible -->
+                                <div class="collapsible-section-v2">
+                                    <button class="collapsible-header-v2" onclick={toggleContributingPRLinesSection}>
+                                        <div class="section-header-left">
+                                            <lightning-icon icon-name="utility:note" size="small" class="section-icon-blue"></lightning-icon>
+                                            <span class="section-title">Contributing PR Lines</span>
+                                        </div>
+                                        <lightning-icon icon-name={contributingPRLinesChevron} size="xx-small" class="chevron-icon-v2"></lightning-icon>
+                                    </button>
+                                    <div class="section-subtitle">{contributingPRLinesCountText}</div>
+                                    <template if:true={isContributingPRLinesExpanded}>
+                                        <div class="collapsible-content-v2">
+                                            <template if:true={hasContributingPRLines}>
+                                                <div class="collapsible-table-card">
+                                                    <table class="slds-table slds-table_bordered inner-table-v2">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>PR LINE</th>
+                                                                <th>ITEM</th>
+                                                                <th>QTY</th>
+                                                                <th>STATUS</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <template for:each={contributingPRLines} for:item="prLine">
+                                                                <tr key={prLine.Id}>
+                                                                    <td>
+                                                                        <a href="#" class="sr-link-bold"
+                                                                            data-id={prLine.Id}
+                                                                            data-object="Purchase_Requisition_Line__c"
+                                                                            onclick={handleRecordNavigate}>{prLine.Name}</a>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="item-cell">
+                                                                            <span class="item-name-bold">{prLine.Item__r.Name}</span>
+                                                                            <span class="item-sku-gray">SKU: {prLine.Item__r.Item_Code__c}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="qty-badge">{prLine.Requested_Qty__c}</span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class={prLine.statusClass}>
+                                                                            <template if:true={prLine.isOpen}>
+                                                                                <lightning-icon icon-name="utility:clock" size="xx-small" class="status-pill-icon"></lightning-icon>
+                                                                            </template>
+                                                                            {prLine.Status__c}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            </template>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </template>
+                                            <template if:false={hasContributingPRLines}>
+                                                <div class="empty-state">No Contributing PR Lines found.</div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+
+
+                        <!-- ====== TAB 3: INVENTORY ====== -->
+                        <template if:true={isInventoryTab}>
+                            <div class="tab-inventory">
+                                <div class="detail-section">
+                                    <h4 class="detail-section-title-gray">INVENTORY AT ITEM LOCATION</h4>
+                                    <template if:true={selectedLineDetail.Inventory_Location__c}>
+                                        <div class="inventory-highlight-panel">
+                                            <div class="inventory-highlight-item">
+                                                <span class="inventory-highlight-label">Location</span>
+                                                <span class="inventory-highlight-value">{inventoryLocation}</span>
+                                            </div>
+                                            <div class="inventory-highlight-item">
+                                                <span class="inventory-highlight-label">Available Qty</span>
+                                                <span class="inventory-highlight-value">{availableQtyFormatted}</span>
+                                            </div>
+                                            <div class="inventory-highlight-item">
+                                                <span class="inventory-highlight-label">On Hand Qty</span>
+                                                <span class="inventory-highlight-value">{onHandQty}</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <div class="detail-section">
+                                    <h4 class="detail-section-title">All Locations for this Item</h4>
+                                    <template if:true={hasInventoryRecords}>
+                                        <table class="slds-table slds-table_bordered inner-table inventory-styled-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>LOCATION</th>
+                                                    <th>ON HAND</th>
+                                                    <th>AVAILABLE</th>
+                                                    <th>RESERVED</th>
+                                                    <th>DAMAGED</th>
+                                                    <th>IN TRANSIT</th>
+                                                    <th>HEALTH</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template for:each={inventoryRecords} for:item="inv">
+                                                    <tr key={inv.Id} class={inv.rowClass}>
+                                                        <td class="text-bold">{inv.Inventory_Location__r.Name}</td>
+                                                        <td class="text-bold">{inv.On_Hand_Qty__c}</td>
+                                                        <td>
+                                                            <span class={inv.availableClass}>{inv.Available__c}</span>
+                                                        </td>
+                                                        <td>{inv.Reserved__c}</td>
+                                                        <td>{inv.Damaged__c}</td>
+                                                        <td>
+                                                            <span class="inv-badge badge-blue">{inv.Transit_In_Quantity__c}</span>
+                                                        </td>
+                                                        <td class="health-col">
+                                                            <div class="health-cell">
+                                                                <div class="health-bar-container">
+                                                                    <div class={inv.healthBarClass} style={inv.healthBarWidthStyle}></div>
+                                                                </div>
+                                                                <template if:true={inv.showWarningIcon}>
+                                                                    <lightning-icon icon-name="utility:warning" size="xx-small" variant="error" class="health-warning-icon"></lightning-icon>
+                                                                </template>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+
+                                        <!-- Health Legend -->
+                                        <div class="legend-container">
+                                            <div class="legend-item">
+                                                <div class="health-bar-container preview-bar">
+                                                    <div class="health-bar-fill health-green" style="width: 100%"></div>
+                                                </div>
+                                                <span class="legend-label">Healthy stock</span>
+                                            </div>
+                                            <div class="legend-item">
+                                                <div class="health-bar-container preview-bar">
+                                                    <div class="health-bar-fill health-orange" style="width: 100%"></div>
+                                                </div>
+                                                <span class="legend-label">Low availability</span>
+                                            </div>
+                                            <div class="legend-item">
+                                                <lightning-icon icon-name="utility:warning" size="xx-small" variant="error" class="legend-icon"></lightning-icon>
+                                                <span class="legend-label">Critical </span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template if:false={hasInventoryRecords}>
+                                        <div class="empty-state">No inventory records found for this item.</div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- ====== TAB 4: DEMAND BREAKDOWN ====== -->
+                        <template if:true={isDemandBreakdownTab}>
+                            <div class="tab-demand-breakdown">
+
+                                <!-- Top 3 Stat Cards -->
+                                <div class="demand-stat-cards">
+                                    <div class="demand-stat-card">
+                                        <span class="demand-stat-label">Remaining qty</span>
+                                        <span class="demand-stat-value">{remainingQtyTotal}</span>
+                                    </div>
+                                    <div class="demand-stat-card demand-stat-card-blue">
+                                        <span class="demand-stat-label">Selected qty</span>
+                                        <span class="demand-stat-value demand-stat-blue">{demandSelectedQty}</span>
+                                    </div>
+                                    <div class="demand-stat-card">
+                                        <span class="demand-stat-label">SRs selected</span>
+                                        <span class="demand-stat-value">{demandSelectedSRsCount}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Supply Requests Table -->
+                                <div class="demand-sr-section">
+                                    <div class="demand-sr-header">
+                                        <h4 class="demand-sr-title">Supply requests <span class="demand-count-badge">({demandSRsCount})</span></h4>
+                                        <p class="demand-sr-subtitle">Select the supply requests to include in this purchase order.</p>
+                                    </div>
+                                    <template if:true={hasDemandSRs}>
+                                        <div class="demand-table-card">
+                                            <table class="slds-table demand-table-v2">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="demand-th-check">
+                                                            <lightning-input type="checkbox" variant="label-hidden"
+                                                                label="Select All" onchange={handleDemandSelectAll}>
+                                                            </lightning-input>
+                                                        </th>
+                                                        <th class="demand-th">Supply request</th>
+                                                        <th class="demand-th">Type</th>
+                                                        <th class="demand-th">Remaining</th>
+                                                        <th class="demand-th">Included</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <template for:each={demandSRs} for:item="sr">
+                                                        <tr key={sr.Id} class={sr.rowClass}>
+                                                            <td class="demand-td-check">
+                                                                <template if:true={sr.isOrdered}>
+                                                                    <span class="demand-ordered-status">Ordered</span>
+                                                                </template>
+                                                                <template if:false={sr.isOrdered}>
+                                                                    <lightning-input type="checkbox" checked={sr.isSelected}
+                                                                        data-id={sr.Id} onchange={handleDemandSRSelect}
+                                                                        variant="label-hidden" label="Select">
+                                                                    </lightning-input>
+                                                                </template>
+                                                            </td>
+                                                            <td>
+                                                                <a href="#" class="demand-sr-link"
+                                                                    data-id={sr.Id} data-object="Supply_Request__c"
+                                                                    onclick={handleRecordNavigate}>{sr.Name}</a>
+                                                            </td>
+                                                            <td>
+                                                                <span class="demand-type-badge">{sr.Request_Type__c}</span>
+                                                            </td>
+                                                            <td class="demand-td-num">{sr.Requested_Qty__c}</td>
+                                                            <td class="demand-td-num">
+                                                                <template if:true={sr.isSelected}>
+                                                                    <span class="demand-included-val">{sr.includedQty}</span>
+                                                                </template>
+                                                                <template if:false={sr.isSelected}>
+                                                                    <span class="demand-zero-val">0</span>
+                                                                </template>
+                                                            </td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </template>
+                                    <template if:false={hasDemandSRs}>
+                                        <div class="empty-state">No Supply Requests found for this item.</div>
+                                    </template>
+
+                                    <!-- Warning Banner -->
+                                    <div class="demand-warning-banner">
+                                        <lightning-icon icon-name="utility:info" size="xx-small" class="demand-warning-icon"></lightning-icon>
+                                        <span>Unchecked supply requests will remain open and can be ordered later.</span>
+                                    </div>
+                                </div>
+
+                                <!-- Contributing PR Lines - Collapsible -->
+                                <div class="collapsible-section-v2 demand-pr-section">
+                                    <button class="collapsible-header-v2" onclick={toggleDemandPRLineSection}>
+                                        <div class="section-header-left">
+                                            <h4 class="demand-pr-title">Contributing PR lines
+                                                <span class="demand-pr-count">({contributingPRLinesCount} records)</span>
+                                            </h4>
+                                        </div>
+                                        <lightning-icon icon-name={demandPRLineChevron} size="xx-small" class="chevron-icon-v2"></lightning-icon>
+                                    </button>
+                                    <template if:true={isDemandPRLineExpanded}>
+                                        <div class="collapsible-content-v2">
+                                            <template if:true={hasContributingPRLines}>
+                                                <div class="collapsible-table-card">
+                                                    <table class="slds-table slds-table_bordered inner-table-v2">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>PR LINE</th>
+                                                                <th>ITEM</th>
+                                                                <th>QTY</th>
+                                                                <th>STATUS</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <template for:each={contributingPRLines} for:item="prLine">
+                                                                <tr key={prLine.Id}>
+                                                                    <td>
+                                                                        <a href="#" class="sr-link-bold"
+                                                                            data-id={prLine.Id}
+                                                                            data-object="Purchase_Requisition_Line__c"
+                                                                            onclick={handleRecordNavigate}>{prLine.Name}</a>
+                                                                    </td>
+                                                                    <td>{prLine.Item__r.Name}</td>
+                                                                    <td>
+                                                                        <span class="qty-badge">{prLine.Requested_Qty__c}</span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class={prLine.statusClass}>
+                                                                            <template if:true={prLine.isOpen}>
+                                                                                <lightning-icon icon-name="utility:clock" size="xx-small" class="status-pill-icon"></lightning-icon>
+                                                                            </template>
+                                                                            {prLine.Status__c}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            </template>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </template>
+                                            <template if:false={hasContributingPRLines}>
+                                                <div class="empty-state">No Contributing PR Lines found.</div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- Sticky Footer: Cancel + Apply Selection -->
+                                <div class="demand-footer">
+                                    <button class="demand-cancel-btn" onclick={handleDemandCancel}>Cancel</button>
+                                    <button class={demandApplyBtnClass} onclick={handleDemandApply} disabled={isApplySelectionDisabled}>Apply selection</button>
+                                </div>
+
+                            </div>
+                        </template>
+
+
+                        <!-- ====== TAB 5: APPROVED VENDORS ====== -->
+                        <template if:true={isApprovedVendorsTab}>
+                            <div class="tab-approved-vendors">
+                                <template if:true={hasApprovedVendors}>
+                                    <!-- Header with Compare Action -->
+                                    <div class="tab-actions-header slds-m-bottom_small">
+                                        <h4 class="tab-subtitle">Approved Product Vendors</h4>
+                                        <template if:true={showCompareButton}>
+                                            <lightning-button label={compareButtonLabel} variant="brand"
+                                                icon-name="utility:change_record_type" onclick={handleOpenCompareModal}
+                                                class="compare-action-btn">
+                                            </lightning-button>
+                                        </template>
+                                    </div>
+
+                                    <!-- Master Vendor Table Card -->
+                                    <div class="table-card slds-m-bottom_medium overflow-x-auto">
+                                        <table
+                                            class="slds-table slds-table_bordered inner-table approved-vendors-table">
+                                            <thead>
+                                                <tr>
+                                                    <template if:true={hasMultipleVendors}>
+                                                        <th class="compare-checkbox-col select-all-col">
+                                                            <div class="select-all-header-cell">
+                                                                <lightning-input type="checkbox"
+                                                                    checked={isAllCompareSelected}
+                                                                    onchange={handleCompareSelectAllChange}
+                                                                    variant="label-hidden" label="Select All for Compare">
+                                                                </lightning-input>
+                                                                <span class="select-all-label">Select</span>
+                                                            </div>
+                                                        </th>
+                                                    </template>
+                                                    <th class="rank-col">Rank</th>
+                                                    <th>Vendor</th>
+                                                    <th>Lead Time (Days)</th>
+                                                    <th>Last Price (INR)</th>
+                                                    <th>Performance (Score)</th>
+                                                    <th class="preferred-col">Preferred</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template for:each={approvedVendorsList} for:item="vendor">
+                                                    <tr key={vendor.Id} class={vendor.rowClass} data-id={vendor.Id}
+                                                        onclick={handleVendorSelect}>
+                                                        <template if:true={hasMultipleVendors}>
+                                                            <td class="compare-checkbox-col">
+                                                                <lightning-input type="checkbox"
+                                                                    checked={vendor.compareSelected} data-id={vendor.Id}
+                                                                    onchange={handleCompareCheckboxChange}
+                                                                    variant="label-hidden" label="Select for Compare">
+                                                                </lightning-input>
+                                                            </td>
+                                                        </template>
+                                                        <td class="rank-col text-bold">{vendor.Rank__c}</td>
+                                                        <td>
+                                                            <div class="vendor-cell">
+                                                                <span
+                                                                    class="vendor-name-link">{vendor.Vendor__r.Name}</span>
+                                                                <template if:true={vendor.Is_Preferred__c}>
+                                                                    <span class="preferred-badge-pill">PREFERRED</span>
+                                                                </template>
+                                                            </div>
+                                                        </td>
+                                                        <td>{vendor.Lead_Time_Days__c}</td>
+                                                        <td>{vendor.formattedPrice}</td>
+                                                        <td>
+                                                            <div class="score-cell">
+                                                                <span
+                                                                    class="score-val text-bold">{vendor.Performance_Score__c}</span>
+                                                                <span
+                                                                    class={vendor.performanceClass}>{vendor.performanceRating}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="preferred-col">
+                                                            <template if:true={vendor.Is_Preferred__c}>
+                                                                <lightning-icon icon-name="utility:check"
+                                                                    size="xx-small" variant="success"></lightning-icon>
+                                                            </template>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Vendor Details Section Card -->
+                                    <template if:true={selectedVendorDetail}>
+                                        <div class="detail-card vendor-details-card">
+                                            <div class="detail-card-header">
+                                                <lightning-icon icon-name="standard:account" size="small"
+                                                    class="detail-card-icon"></lightning-icon>
+                                                <h4 class="detail-card-title">Vendor Details</h4>
+                                            </div>
+
+                                            <div class="vendor-details-title-row">
+                                                <h3 class="vendor-details-title">{selectedVendorDetail.Vendor__r.Name}
+                                                </h3>
+                                                <template if:true={selectedVendorDetail.Is_Preferred__c}>
+                                                    <span class="preferred-badge-pill large-pill">PREFERRED</span>
+                                                </template>
+                                            </div>
+
+                                            <div class="detail-grid slds-m-top_medium">
+                                                <div class="detail-item">
+                                                    <span class="detail-label">Ranking</span>
+                                                    <span
+                                                        class="detail-value text-bold">{selectedVendorDetail.Rank__c}</span>
+                                                </div>
+                                                <div class="detail-item">
+                                                    <span class="detail-label">Performance Score</span>
+                                                    <span
+                                                        class="detail-value text-bold">{selectedVendorDetail.Performance_Score__c}
+                                                        ({selectedVendorDetail.performanceRating})</span>
+                                                </div>
+                                                <div class="detail-item">
+                                                    <span class="detail-label">Lead Time (Days)</span>
+                                                    <span
+                                                        class="detail-value text-bold">{selectedVendorDetail.Lead_Time_Days__c}</span>
+                                                </div>
+                                                <div class="detail-item">
+                                                    <span class="detail-label">Last Price (INR)</span>
+                                                    <span
+                                                        class="detail-value text-bold">{selectedVendorDetail.formattedPrice}</span>
+                                                </div>
+                                                <div class="detail-item col-span-2">
+                                                    <span class="detail-label">Last Reviewed Date</span>
+                                                    <span
+                                                        class="detail-value">{selectedVendorDetail.formattedReviewDate}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </template>
+                                <template if:false={hasApprovedVendors}>
+                                    <div class="empty-state">No approved vendors found for this item.</div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- ====== TAB 6: VENDOR COMPARISON ====== -->
+                        <template if:true={isVendorComparisonTab}>
+                            <div class="tab-vendor-comparison">
+                                <template if:true={hasComparedVendors}>
+                                    <!-- Comparison Matrix Table Card -->
+                                    <div class="compare-table-card overflow-x-auto">
+                                        <table class="slds-table slds-table_bordered compare-matrix-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="row-header-cell">
+                                                        <div class="compare-intro">
+                                                            <span class="compare-title">Comparison</span>
+                                                            <span class="compare-subtitle">{comparedVendorsList.length}
+                                                                vendors</span>
+                                                        </div>
+                                                    </th>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <th key={vendor.Id} class="vendor-compare-header-cell">
+                                                            <div class="header-vendor-box">
+                                                                <lightning-input type="checkbox" checked
+                                                                    data-id={vendor.Id}
+                                                                    onchange={handleCompareModalCheckboxChange}
+                                                                    variant="label-hidden" label="Remove comparison"
+                                                                    class="compare-remove-checkbox">
+                                                                </lightning-input>
+                                                                <span
+                                                                    class="vendor-compare-name">{vendor.Vendor__r.Name}</span>
+                                                                <template if:true={vendor.Is_Preferred__c}>
+                                                                    <span class="preferred-badge-pill">PREFERRED</span>
+                                                                </template>
+                                                            </div>
+                                                        </th>
+                                                    </template>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Rank Row -->
+                                                <tr>
+                                                    <td class="row-header-cell">Rank</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-bold text-center">
+                                                            {vendor.Rank__c}</td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Preferred Row -->
+                                                <tr>
+                                                    <td class="row-header-cell">Preferred</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-center">
+                                                            <template if:true={vendor.Is_Preferred__c}>
+                                                                <span class="preferred-badge-pill">YES</span>
+                                                            </template>
+                                                            <template if:false={vendor.Is_Preferred__c}>
+                                                                <span class="text-secondary">—</span>
+                                                            </template>
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Lead Time Row -->
+                                                <tr>
+                                                    <td class="row-header-cell">Lead Time (Days)</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-center">
+                                                            {vendor.Lead_Time_Days__c}</td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Last Price Row -->
+                                                <tr>
+                                                    <td class="row-header-cell">Last Price (INR)</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-center text-bold">
+                                                            {vendor.formattedPrice}</td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Performance Score Row -->
+                                                <tr>
+                                                    <td class="row-header-cell">Performance Score</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-center">
+                                                            <span class="text-bold">{vendor.Performance_Score__c}</span>
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Performance Rating Row -->
+                                                <tr>
+                                                    <td class="row-header-cell">Performance Rating</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-center">
+                                                            <span
+                                                                class={vendor.performanceClass}>{vendor.performanceRating}</span>
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Last Reviewed Date Row -->
+                                                <tr>
+                                                    <td class="row-header-cell">Last Reviewed</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-center">
+                                                            {vendor.formattedReviewDate}</td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Select Vendor Row -->
+                                                <tr class="select-vendor-row-highlight">
+                                                    <td class="row-header-cell">Select Vendor</td>
+                                                    <template for:each={comparedVendorsList} for:item="vendor">
+                                                        <td key={vendor.Id} class="text-center select-radio-cell">
+                                                            <lightning-input type="radio" name="winnerVendorSelectInTab"
+                                                                value={vendor.Id} checked={vendor.isWinner}
+                                                                onchange={handleWinnerRadioChange}
+                                                                variant="label-hidden" label="Select Vendor"
+                                                                class="winner-radio-selector">
+                                                            </lightning-input>
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Recommended Vendor Alert Card -->
+                                    <template if:true={recommendedVendor}>
+                                        <div class="recommended-vendor-card">
+                                            <div class="recommended-header">
+                                                <span class="star-gold-badge">★</span>
+                                                <span class="recommended-title">Recommended Vendor</span>
+                                            </div>
+                                            <p class="recommended-text">
+                                                <strong>{recommendedVendor.Vendor__r.Name}</strong> is the best option
+                                                based on the highest performance score.
+                                            </p>
+                                        </div>
+                                    </template>
+
+                                    <!-- Selection Actions Footer-style Bar inside tab -->
+                                    <div class="tab-actions-footer">
+                                        <lightning-button label="Cancel" variant="neutral"
+                                            onclick={handleCancelComparison}
+                                            class="slds-m-right_x-small"></lightning-button>
+                                        <lightning-button label={selectWinnerButtonLabel} variant="brand"
+                                            onclick={handleSelectWinner} disabled={noWinnerSelected}></lightning-button>
+                                    </div>
+                                </template>
+
+                                <template if:false={hasComparedVendors}>
+                                    <div class="comparison-empty-state slds-p-around_large text-center">
+                                        <template if:true={hasOnlyOneVendor}>
+                                            <lightning-icon icon-name="utility:info" size="large"
+                                                class="empty-icon slds-m-bottom_small"></lightning-icon>
+                                            <h4 class="text-bold text-lg">Vendor Comparison Not Available</h4>
+                                            <p class="text-secondary">There is only one approved vendor for this item. Vendor comparison requires at least two vendors.</p>
+                                        </template>
+                                        <template if:false={hasOnlyOneVendor}>
+                                            <lightning-icon icon-name="utility:retail_execution" size="large"
+                                                class="empty-icon slds-m-bottom_small"></lightning-icon>
+                                            <h4 class="text-bold text-lg">No Vendors Selected for Comparison</h4>
+                                            <p class="text-secondary">Please go to the <strong>Approved Vendors</strong>
+                                                tab, select the checkboxes for the vendors you want to compare, and click
+                                                the <strong>Compare Vendors</strong> button.</p>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                    </div>
+                </template>
+
+                <!-- Loading State -->
+                <template if:false={selectedLineDetail}>
+                    <div class="panel-loading">
+                        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+    <!-- ===== CONCURRENCY / DUPLICATE ERROR MODAL ===== -->
+    <template if:true={isErrorModalOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open error-modal">
+            <div class="slds-modal__container">
+                <!-- Modal Header -->
+                <header class="slds-modal__header error-modal-header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                        title="Close" onclick={handleCloseErrorModal}>
+                        <lightning-icon icon-name="utility:close" size="small" variant="inverse"></lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 class="slds-modal__title slds-hyphenate error-modal-title">Generation Blocked</h2>
+                </header>
+                <!-- Modal Body -->
+                <div class="slds-modal__content slds-p-around_medium error-modal-body">
+                    <div class="error-modal-alert">
+                        <lightning-icon icon-name="utility:error" size="large" variant="error"
+                            class="slds-m-right_medium error-icon-badge"></lightning-icon>
+                        <div>
+                            <p class="error-modal-message-title">Requisition Lines Already Processed</p>
+                            <p class="error-modal-message-desc">{errorModalMessage}</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Modal Footer -->
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Close" variant="neutral" onclick={handleCloseErrorModal}
+                        class="slds-m-right_x-small"></lightning-button>
+                    <lightning-button label="Refresh Data" variant="brand"
+                        onclick={handleCloseErrorModalAndRefresh}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- ===== GENERATION SUCCESS CUSTOM MODAL ===== -->
+    <template if:true={isSuccessModalOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open success-modal">
+            <div class="slds-modal__container success-modal-container">
+                <!-- Modal Header -->
+                <header class="slds-modal__header success-modal-header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                        title="Close" onclick={handleCloseSuccessModal}>
+                        <lightning-icon icon-name="utility:close" size="small" variant="inverse"></lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 class="slds-modal__title slds-hyphenate success-modal-title">Purchase Orders Generated Successfully</h2>
+                </header>
+                <!-- Modal Body -->
+                <div class="slds-modal__content slds-p-around_medium success-modal-body">
+                    <div class="success-intro slds-m-bottom_medium">
+                        <lightning-icon icon-name="utility:success" size="medium" variant="success" class="slds-m-right_small success-icon-badge"></lightning-icon>
+                        <div>
+                            <p class="success-message-title">Consolidated Purchase Orders Created</p>
+                            <p class="success-message-desc">{successModalMessage}</p>
+                        </div>
+                    </div>
+
+                    <!-- Details Tree/List of Created Records -->
+                    <div class="created-records-container">
+                        <template for:each={successPOs} for:item="po">
+                            <div key={po.Id} class="po-group-card">
+                                <div class="po-group-header">
+                                    <lightning-icon icon-name="standard:orders" size="small" class="po-icon"></lightning-icon>
+                                    <div class="po-header-details">
+                                        <a href="#" class="po-link text-bold" data-id={po.Id} data-object="Purchase_Order__c" onclick={handleRecordNavigate}>{po.Name}</a>
+                                        <span class="po-meta">Vendor: {po.Vendor__r.Name} • Ship to: {po.Ship_to_Warehouse__r.Name}</span>
+                                    </div>
+                                </div>
+                                <div class="po-group-body">
+                                    <!-- POLIs -->
+                                    <div class="polis-list">
+                                        <div class="list-title">Line Items (POLIs)</div>
+                                        <template for:each={po.polis} for:item="poli">
+                                            <div key={poli.Id} class="poli-item-card">
+                                                <div class="poli-details">
+                                                    <a href="#" class="poli-link" data-id={poli.Id} data-object="Purchase_Order_Line_Item__c" onclick={handleRecordNavigate}>{poli.Name}</a>
+                                                    <span class="poli-meta">{poli.Item__r.Name} (Qty: {poli.Ordered_Qty__c} @ INR {poli.Unit_Price__c})</span>
+                                                </div>
+                                                <!-- POAs under this POLI -->
+                                                <div class="poas-list slds-m-left_large slds-m-top_xx-small">
+                                                    <div class="sub-list-title">Allocations (POAs)</div>
+                                                    <template for:each={poli.poas} for:item="poa">
+                                                        <div key={poa.Id} class="poa-item">
+                                                            <a href="#" class="poa-link" data-id={poa.Id} data-object="Purchase_Order_Allocation__c" onclick={handleRecordNavigate}>{poa.Name}</a>
+                                                            <span class="poa-meta">Allocated Qty: {poa.Allocated_Qty__c} to Supply Request: {poa.Supply_Request__r.Name}</span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <!-- Modal Footer with Countdown -->
+                <footer class="slds-modal__footer success-modal-footer">
+                    <div class="success-modal-footer-left">
+                        <span class="countdown-text">Closing in {successCountdown} seconds...</span>
+                    </div>
+                    <div class="success-modal-footer-right">
+                        <lightning-button label="Close Now" variant="neutral" onclick={handleCloseSuccessModal}></lightning-button>
+                    </div>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

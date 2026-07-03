@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Request_Type__c</fullName>
+    <label>Request Type</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Customer Demand</fullName>
+                <default>false</default>
+                <label>Customer Demand</label>
+            </value>
+            <value>
+                <fullName>Forecast Demand</fullName>
+                <default>false</default>
+                <label>Forecast Demand</label>
+            </value>
+            <value>
+                <fullName>Manual Request</fullName>
+                <default>false</default>
+                <label>Manual Request</label>
+            </value>
+            <value>
+                <fullName>Stock Replenishment</fullName>
+                <default>false</default>
+                <label>Stock Replenishment</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
